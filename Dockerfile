@@ -1,13 +1,7 @@
 # ================================
 # Build image
 # ================================
-FROM swift:5.9-jammy as build
-
-# Install OS updates
-RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    && apt-get -q update \
-    && apt-get -q dist-upgrade -y\
-    && rm -rf /var/lib/apt/lists/*
+FROM swift:5.8-rhel-ubi9 as build
 
 # Set up a build area
 WORKDIR /build
@@ -24,10 +18,7 @@ RUN swift package resolve --skip-update \
 COPY . .
 
 # Build everything, with optimizations
-RUN swift build -c release --static-swift-stdlib \
-    # Workaround for https://github.com/apple/swift/pull/68669
-    # This can be removed as soon as 5.9.1 is released, but is harmless if left in.
-    -Xlinker -u -Xlinker _swift_backtrace_isThunkFunction
+RUN swift build -c release --static-swift-stdlib
 
 # Switch to the staging area
 WORKDIR /staging
@@ -46,23 +37,11 @@ RUN [ -d /build/Resources ] && { mv /build/Resources ./Resources && chmod -R a-w
 # ================================
 # Run image
 # ================================
-FROM swift:5.9-jammy-slim
-
-# Make sure all system packages are up to date, and install only essential packages.
-RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    && apt-get -q update \
-    && apt-get -q dist-upgrade -y \
-    && apt-get -q install -y \
-      ca-certificates \
-      tzdata \
-# If your app or its dependencies import FoundationNetworking, also install `libcurl4`.
-      # libcurl4 \
-# If your app or its dependencies import FoundationXML, also install `libxml2`.
-      # libxml2 \
-    && rm -r /var/lib/apt/lists/*
+FROM redhat/ubi9-micro
 
 # Create a vapor user and group with /app as its home directory
-RUN useradd --user-group --create-home --system --skel /dev/null --home-dir /app vapor
+RUN groupadd -g 42 vapor && \
+    useradd -m -r -u 42 -g vapor vapor
 
 # Switch to the new home directory
 WORKDIR /app
