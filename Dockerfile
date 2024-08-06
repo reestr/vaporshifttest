@@ -1,7 +1,7 @@
 # ================================
 # Build image
 # ================================
-FROM swift:5.9-rhel-ubi9 as build
+FROM swift:5.10-rhel-ubi9 as build
 
 # Set up a build area
 WORKDIR /build
